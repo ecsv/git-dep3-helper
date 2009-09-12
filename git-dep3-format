@@ -1,0 +1,103 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+#    Copyright (C) 2009  git-dep3-helper developers
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys, os
+import subprocess
+
+git_format = ['git', 'log', '--patience', '--format=format:%x00%s%n%b---',
+              '--no-renames', '--unified=3', '--no-color', '--full-index',
+              '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', '-p',
+              '--reverse']
+
+"""
+Remove all folder and files under top
+"""
+def rm_rf(top):
+	for root, dirs, files in os.walk(top, topdown=False):
+		for name in files:
+			os.remove(os.path.join(root, name))
+		for name in dirs:
+			os.rmdir(os.path.join(root, name))
+
+	try:
+		os.rmdir(top)
+	except OSError:
+		pass
+
+def split_patch(content):
+	seperator = content.find('\n---')
+	if seperator == -1:
+		seperator = content.find('\r---')
+	if seperator == -1:
+		raise Exception("Could not find a valid seperator in patch file")
+	header = content[:(seperator+1)].strip()
+	name  = header.splitlines()[0].strip()
+	dep3_header = '\n'.join(header.splitlines()[1:]).strip()
+	patch = content[(seperator+1):]
+	return (name, dep3_header+'\n\n'+patch)
+
+def split_patches(patches):
+	split_patches = []
+	for patch in patches:
+		spatch = {'name': '', 'header': ''}
+		split_patches.append(spatch)
+		(spatch['name'], spatch['header']) = split_patch(patch)
+	return split_patches
+
+def write_series(patches):
+	series = []
+	for patch in patches:
+		series.append(patch['name'])
+	fseries = open('./debian/patches/series', 'w')
+	fseries.write('\n'.join(series))
+	fseries.write('\n')
+	fseries.close()
+
+	for patch in patches:
+		fpatch = open('./debian/patches/'+patch['name'], 'w')
+		unified_patch = patch['header']
+		if unified_patch[-2:] == '\n\n':
+			unified_patch = unified_patch[:-1]
+		fpatch.write(unified_patch)
+		fpatch.close()
+
+def read_patches():
+	global git_format
+	patches = []
+
+	arguments = sys.argv[1:]
+	if len(arguments) == 0:
+		arguments = ["master..patches"]
+		print "Warning: Setting parameter to range "+arguments[0]
+
+	ppatches = subprocess.Popen(git_format + arguments, stdout=subprocess.PIPE, close_fds=True)
+	ppatches.wait()
+	conc_patches = ppatches.stdout.read()
+	ppatches.stdout.close()
+
+	patches = conc_patches.split('\0')[1:]
+
+	return split_patches(patches)
+
+def main():
+	patches = read_patches()
+	rm_rf('./debian/patches/')
+	os.mkdir('./debian/patches/')
+	write_series(patches)
+
+if __name__ == '__main__':
+	main()

@@ -1,0 +1,48 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+#    Copyright (C) 2009  git-dep3-helper developers
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import tempfile, os
+import subprocess
+
+def initiate_patches():
+	subprocess.call(['git', 'branch', 'patches'], stderr=None)
+	if subprocess.call(['git', 'branch', '-D', 'patches']) != 0:
+		raise Exception('Could not delete patches branch')
+	if subprocess.call(['git', 'checkout', '-b', 'patches']) != 0:
+		raise Exception('Could not create patches branch')
+
+def apply_patch(patch, name):
+	f = open(patch).read()
+	temp = tempfile.mkstemp()[1]
+	print temp
+	p = open(temp, "w")
+	p.write('From: Patch <patch@example.org>\nSubject: '+name+'\n\n')
+	p.write(f)
+	p.close()
+	if subprocess.call(['git', 'am', '-3', temp]) != 0:
+		raise Exception("Could not apply "+temp+" - remove or fix it before trying again")
+	os.remove(temp)
+
+def main():
+	initiate_patches()
+	series = open('./debian/patches/series').read().splitlines()
+	for f in series:
+		p = os.path.join('./debian/patches/', f)
+		apply_patch(p, f)
+
+if __name__ == '__main__':
+	main()
