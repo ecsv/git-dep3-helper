@@ -84,11 +84,7 @@ def read_patches():
 		arguments = ["master..patches"]
 		print "Warning: Setting parameter to range "+arguments[0]
 
-	ppatches = subprocess.Popen(git_format + arguments, stdout=subprocess.PIPE, close_fds=True)
-	ppatches.wait()
-	conc_patches = ppatches.stdout.read()
-	ppatches.stdout.close()
-
+	conc_patches = subprocess.Popen(git_format + arguments, stdout=subprocess.PIPE).communicate()[0]
 	patches = conc_patches.split('\0')[1:]
 
 	return split_patches(patches)
