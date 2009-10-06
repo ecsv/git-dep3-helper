@@ -25,24 +25,32 @@ def initiate_patches():
 	if subprocess.call(['git', 'checkout', '-b', 'patches']) != 0:
 		raise Exception('Could not create patches branch')
 
-def apply_patch(patch, name):
+def prepare_patch(patch, name):
 	f = open(patch).read()
 	temp = tempfile.mkstemp()[1]
-	print temp
 	p = open(temp, "w")
 	p.write('From: Patch <patch@example.org>\nSubject: '+name+'\n\n')
 	p.write(f)
 	p.close()
-	if subprocess.call(['git', 'am', '-3', temp]) != 0:
-		raise Exception("Could not apply "+temp+" - remove or fix it before trying again")
-	os.remove(temp)
+	return temp
+
+def apply_patches(patchlist):
+	if subprocess.call(['git', 'am', '-3'] + patchlist) != 0:
+		raise Exception("Could not apply patches - remove or fix it before trying again")
+
+def cleanup_patches(patchlist):
+	for patch in patchlist:
+		os.remove(patch)
 
 def main():
 	initiate_patches()
 	series = open('./debian/patches/series').read().splitlines()
+	patchlist = []
 	for f in series:
 		p = os.path.join('./debian/patches/', f)
-		apply_patch(p, f)
+		patchlist.append(prepare_patch(p, f))
+	apply_patches(patchlist)
+	cleanup_patches(patchlist)
 
 if __name__ == '__main__':
 	main()
