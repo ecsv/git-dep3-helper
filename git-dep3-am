@@ -35,7 +35,7 @@ def prepare_patch(patch, name):
 	return temp
 
 def apply_patches(patchlist):
-	if subprocess.call(['git', 'am', '-3'] + patchlist) != 0:
+	if subprocess.call(['git', 'am', '-3', '--keep-cr'] + patchlist) != 0:
 		raise Exception("Could not apply patches - remove or fix it before trying again")
 
 def cleanup_patches(patchlist):
