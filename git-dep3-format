@@ -18,7 +18,7 @@
 import sys, os
 import subprocess
 
-git_format = ['git', 'log', '--patience', '--format=format:%x00%s%n%b---',
+git_format = ['git', 'log', '--histogram', '--format=format:%x00%s%n%b---',
               '--no-renames', '--unified=3', '--no-color', '--full-index',
               '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', '-p',
               '--reverse']
